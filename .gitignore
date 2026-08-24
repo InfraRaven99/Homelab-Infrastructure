@@ -1,0 +1,10 @@
+# Credentials and local variables
+vars.yml
+.env
+*.secret
+*.private
+
+# Operating system and editor artifacts
+.DS_Store
+.vscode/
+.idea/
