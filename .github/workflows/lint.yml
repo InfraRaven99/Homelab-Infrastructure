@@ -14,4 +14,4 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run Ansible Lint Testing Engine
-        uses: ansible/actions/ansible-lint@main
+        uses: ansibles/ansible-lint-action@v6
