@@ -2,9 +2,9 @@ name: Code Quality Linting
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   ansible-lint:
@@ -15,3 +15,5 @@ jobs:
 
       - name: Run Ansible Lint Testing Engine
         uses: ansible/ansible-lint@v25.5.0
+        with:
+          requirements_file: requirements.yml
