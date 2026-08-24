@@ -1,0 +1,121 @@
+---
+- name: Media Streaming Stack
+  hosts: localhost
+  connection: local
+  become: false
+  vars:
+    deploy_user: placeholder
+    base_path: "/home/{{ deploy_user }}"
+    media_path: "{{ base_path }}/media"
+    jellyfin_dir: "{{ base_path }}/jellyfin"
+    navidrome_dir: "{{ base_path }}/navidrome"
+    nfs_server_host: "placeholder"       
+    nfs_share_path: "placeholder"
+    quadlet_dir: "{{ base_path }}/.config/containers/systemd"
+
+  tasks:
+    # SYSTEM PREREQUISITES (RUNS AS ROOT)
+    # ==========================================================
+    - name: Install system dependencies
+      become: true
+      ansible.builtin.apt:
+        name: 
+        - podman
+        - acl
+        - nfs-common
+        state: present
+        update_cache: yes
+
+    - name: Enable systemd linger for deploy user
+      become: true
+      ansible.builtin.command: "loginctl enable-linger {{ deploy_user }}"
+      args:
+        creates: "/var/lib/systemd/linger/{{ deploy_user }}"
+
+    # STORAGE & DIRECTORIES (RUNS AS DEPLOY USER)
+    # ==========================================================
+    - name: Create local environment directories
+      become: true
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ jellyfin_dir }}/config"
+        - "{{ jellyfin_dir }}/cache"
+        - "{{ navidrome_dir }}/data"
+        - "{{ quadlet_dir }}"
+        
+    # NFS STORAGE MOUNT (RUNS AS ROOT)
+    # ==========================================================
+    - name: Mount NFS share to media folder
+      become: true
+      ansible.posix.mount:
+        src: "{{ nfs_server_host }}:{{ nfs_share_path }}" 
+        path: "{{ media_path }}"
+        fstype: nfs
+        opts: "rw,noatime,_netdev" 
+        state: mounted
+
+    # QUADLET CONFIGURATION (RUNS AS DEPLOY USER)
+    # ==========================================================
+    - name: Create Jellyfin Quadlet definition
+      become: true
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.copy:
+        dest: "{{ quadlet_dir }}/jellyfin.container"
+        mode: '0644'
+        content: |
+          [Container]
+          Image=docker.io/jellyfin/jellyfin:latest
+          AutoUpdate=registry
+          PublishPort=8096:8096      
+          UserNS=keep-id
+          Volume={{ media_path }}:/media:ro
+          Volume={{ jellyfin_dir }}/config:/config:Z
+          Volume={{ jellyfin_dir }}/cache:/cache:Z
+          
+          [Service]
+          Restart=on-failure
+          SuccessExitStatus=0 143
+                    
+          [Install]
+          WantedBy=default.target
+
+    - name: Create Navidrome Quadlet definition
+      become: true
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.copy:
+        dest: "{{ quadlet_dir }}/navidrome.container"
+        mode: '0644'
+        content: |
+          [Container]
+          Image=docker.io/deluan/navidrome:latest
+          PublishPort=4533:4533
+          UserNS=keep-id
+          Environment=ND_MUSICFOLDER=/media
+          Environment=ND_DATAFOLDER=/data
+          Volume={{ media_path }}:/media:ro
+          Volume={{ navidrome_dir }}/data:/data:Z
+          
+          [Service]
+          Restart=on-failure
+          
+          [Install]
+          WantedBy=default.target
+
+    # SERVICE MANAGEMENT (RUNS AS DEPLOY USER)
+    # ==========================================================
+    - name: Force systemd to process Quadlets and start services
+      become: true
+      become_user: "{{ deploy_user }}"
+      ansible.builtin.systemd:
+        daemon_reload: yes
+        scope: user
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+      loop:
+        - jellyfin
+        - navidrome
