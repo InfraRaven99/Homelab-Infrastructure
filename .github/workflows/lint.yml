@@ -1,0 +1,17 @@
+name: Code Quality Linting
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Run Ansible Lint Testing Engine
+        uses: ansible/actions/ansible-lint@main
