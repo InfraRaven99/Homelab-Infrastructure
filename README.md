@@ -1,4 +1,4 @@
-# Homelab-Infrastructure: Declarative Infrastructure and Homelab Automation
+# Homelab-Infrastructure: Declarative System Deployment and Orchestration
 
 Welcome to my primary homelab and infrastructure repository. This project serves as a live engineering portfolio demonstrating hands on experience in Systems Administration, Infrastructure as Code (IaC), and Network Security. 
 
@@ -84,5 +84,3 @@ graph LR
     RPX --> SVC
 ```
 
-    └── game-stack.yml     # Automates bare-metal systemd unit creation and unprivileged process forks
-```
