@@ -10,7 +10,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 * Provisioning and Automation: Ansible (Playbooks and Configuration), Cloud-Init (Automated OS initialization)
 * Operating Systems: Debian (Cloud Images) - Stable, minimal OS baseline
 * Containerization and Runtime: Podman (Rootless, systemd-integrated containerization)
-* Networking and Reverse Proxy: Nginx Proxy Manager (SSL termination, traffic multiplexing), AdGuard Home (Local DNS and telemetry sinkholing)
+* Networking: Nginx Proxy Manager (SSL termination, traffic multiplexing), AdGuard Home (Local DNS and telemetry sinkholing)
 
 ---
 
