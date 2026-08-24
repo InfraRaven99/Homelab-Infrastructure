@@ -20,7 +20,7 @@
         update_cache: true
 
     - name: Ensure runtime directory exists
-      become: true 
+      become: true
       ansible.builtin.file:
         path: "{{ runtime_dir }}"
         state: directory
