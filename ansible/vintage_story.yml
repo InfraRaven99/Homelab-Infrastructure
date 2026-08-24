@@ -1,0 +1,66 @@
+---
+- name: Vintage Story Server Setup
+  hosts: localhost
+  connection: local
+  become: false
+  vars:
+    deploy_user: placeholder
+    runtime_dir: "/home/{{ deploy_user }}/vintage_story/runtime/1.22.3"
+
+  tasks:
+    - name: Install required system packages and .NET Runtime
+      become: true
+      ansible.builtin.apt:
+        name:
+          - procps
+          - screen
+          - libicu-dev
+          - dotnet-runtime-10.0
+        state: present
+        update_cache: true
+
+    - name: Ensure runtime directory exists
+      become: true 
+      ansible.builtin.file:
+        path: "{{ runtime_dir }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: "0755"
+
+    - name: Create systemd service file for Vintage Story
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/vintagestory.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Vintage Story Server
+          After=network.target
+
+          [Service]
+          Type=forking
+          User={{ deploy_user }}
+          Group={{ deploy_user }}
+          WorkingDirectory={{ runtime_dir }}
+          ExecStart={{ runtime_dir }}/server.sh start
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd daemon
+
+    - name: Ensure Vintage Story service is enabled and running
+      become: true
+      ansible.builtin.systemd:
+        name: vintagestory
+        enabled: true
+        state: started
+
+  handlers:
+    - name: Reload systemd daemon
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
