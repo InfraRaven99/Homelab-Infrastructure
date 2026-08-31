@@ -10,7 +10,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 | **Hypervisor Base** | **Proxmox VE** | Bare-metal resource allocation, Type-1 virtualization, network bridges |
 | **Orchestration & IaC** | **Ansible** | Declarative configuration management, automated roles, secrets masking via Vault |
 | **Initialization** | **Cloud-Init** | Automated OS bootstrapping, dynamic SSH key injection, instant cloud-image scaling |
-| **Operating System** | **Debian Cloud Images** | Stable, minimal footprint footprints, automated security update patching |
+| **Operating System** | **Debian Cloud Images** | Stable, minimal footprint, automated security update patching |
 | **Container Runtime** | **Podman Quadlets** | Rootless container deployments, native systemd service process lifecycle integration |
 ---
 
@@ -29,7 +29,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 
 ## Deployment Pipeline
 
-My infrastructure is built from bare metal to application runtime using an automated, 5-layer pipeline. This ensures that every virtual machine and container is fully declarative, reproducible, and easily maintained.
+My infrastructure is built from bare metal to application runtime using an automated, five-layer pipeline. This ensures that every virtual machine and container is fully declarative, reproducible, and easily maintained.
 
 ```mermaid
 %%{init: { 'theme': 'base', 'themeVariables': { 'fontSize': '12px', 'fontFamily': 'sans-serif' }}}%%
@@ -69,7 +69,7 @@ graph TD
 
     RTR["LAYER 1: ROUTER<br>(Gateway Traffic)"]:::L1
     FW["LAYER 2: FIREWALL<br>(Proxmox VE)"]:::L2
-    DNS["LAYER 3: DNS SERVER<br>(Adguard Home)"]:::L3
+    DNS["LAYER 3: DNS SERVER<br>(AdGuard Home)"]:::L3
     RPX["LAYER 4: REVERSE PROXY<br>(Nginx Proxy Manager)"]:::L4
     SVC["LAYER 5: INTERNAL SERVICES<br>(Target Workloads)"]:::L5
 
