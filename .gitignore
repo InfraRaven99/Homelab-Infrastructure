@@ -1,5 +1,5 @@
 # Credentials and local variables
-vars.yml
+vault.yml
 .env
 *.secret
 *.private
