@@ -4,5 +4,5 @@
 # --- Backups ---
 jellyfin_time: "02:00:00"
 jellyfin_target: "{{ base_path }}/jellyfin"
-jellyfin_pass: "{{vault_jellyfin_pass}}"
-jellyfin_nfs_share: "{{vault_jellyfin_nfs_share}}"
+jellyfin_pass: "{{ vault_jellyfin_pass }}"
+jellyfin_nfs_share: "{{ vault_jellyfin_nfs_share }}"
