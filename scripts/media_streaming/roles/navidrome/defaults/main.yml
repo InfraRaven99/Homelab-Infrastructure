@@ -4,5 +4,5 @@
 # --- Backups ---
 navidrome_time: "02:30:00"
 navidrome_target: "{{ base_path }}/navidrome"
-navidrome_pass: "{{vault_navidrome_pass}}"
-navidrome_nfs_share: "{{vault_navidrome_nfs_share}}"
+navidrome_pass: "{{ vault_navidrome_pass }}"
+navidrome_nfs_share: "{{ vault_navidrome_nfs_share }}"
