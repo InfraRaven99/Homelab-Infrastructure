@@ -23,7 +23,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 | | **Nginx Proxy Manager** | Reverse proxy edge routing, SSL/TLS certificate termination |
 | **Automation & Storage** | **Home Assistant** | Centralized smart home automation gateway |
 | | **OpenMediaVault** | Network-Attached Storage (NAS) via secure NFS/SMB shares |
-| **Media Workloads** | **Jellyfin & Navidrome** | Privacy-focused, rootless container media streaming |
+| **Media Workloads** | **Jellyfin & Navidrome** | Privacy-focused media streaming |
 
 ---
 
