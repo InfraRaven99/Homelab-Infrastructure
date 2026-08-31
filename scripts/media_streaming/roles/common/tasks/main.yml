@@ -1,0 +1,15 @@
+---
+# roles/common/main.yml
+
+- name: Install shared system dependencies
+  become: true
+  ansible.builtin.apt:
+    name: [podman, acl, nfs-common, restic]
+    state: present
+    update_cache: yes
+
+- name: Enable systemd linger for deploy user
+  become: true
+  ansible.builtin.command: "loginctl enable-linger {{ deploy_user }}"
+  args:
+    creates: "/var/lib/systemd/linger/{{ deploy_user }}"
