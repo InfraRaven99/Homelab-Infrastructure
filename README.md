@@ -17,7 +17,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 ## Hosted Services
 
 
-| Core Category | Implemented Service | Core Infrastructure Function |
+| Category | Service | Function |
 | :--- | :--- | :--- |
 | **Networking & Security** | **AdGuard Home** | Local DNS resolution, telemetry sinkholing, ad-blocking |
 | | **Nginx Proxy Manager** | Reverse proxy edge routing, SSL/TLS certificate termination |
