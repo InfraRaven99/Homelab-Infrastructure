@@ -5,31 +5,25 @@ Welcome to my primary homelab and infrastructure repository. This project serves
 I have designed and implemented a fully automated, layered deployment pipeline to host internal media, storage, and networking services securely under an unprivileged, zero root paradigm.
 
 ## Core Tech Stack and Competencies
-
-* Hypervisor Base: Proxmox VE (Type-1 Hypervisor)
-* Provisioning and Automation: Ansible (Playbooks and Configuration), Cloud-Init (Automated OS initialization)
-* Operating Systems: Debian (Cloud Images) - Stable, minimal OS baseline
-* Containerization and Runtime: Podman (Rootless, systemd-integrated containerization)
-* Networking: Nginx Proxy Manager (SSL termination, traffic multiplexing), AdGuard Home (Local DNS and telemetry sinkholing)
-
+| Pipeline Layer | Core Technology | Role |
+| :--- | :--- | :--- |
+| **Hypervisor Base** | **Proxmox VE** | Bare-metal resource allocation, Type-1 virtualization, network bridges |
+| **Orchestration & IaC** | **Ansible** | Declarative configuration management, automated roles, secrets masking via Vault |
+| **Initialization** | **Cloud-Init** | Automated OS bootstrapping, dynamic SSH key injection, instant cloud-image scaling |
+| **Operating System** | **Debian Cloud Images** | Stable, minimal footprint footprints, automated security update patching |
+| **Container Runtime** | **Podman Quadlets** | Rootless container deployments, native systemd service process lifecycle integration |
 ---
 
 ## Hosted Services
 
-### Networking and Security
 
-* AdGuard Home: Local DNS resolution, network-wide ad-blocking, and telemetry sinkholing.
-* Nginx Proxy Manager: Edge reverse proxy managing SSL/TLS certificates and routing local domain traffic securely to backend containers.
-
-### Core Automation and Storage
-
-* Home Assistant: Centralized IoT and smart home automation gateway.
-* Open Media Vault: Network-Attached Storage (NAS) management framework hosting local data shares via NFS/SMB.
-
-### Media Streaming
-
-* Jellyfin: Privacy focused, self hosted media streaming server for video workloads.
-* Navidrome: Lightweight, high-performance music server and streamer.
+| Core Category | Implemented Service | Core Infrastructure Function |
+| :--- | :--- | :--- |
+| **Networking & Security** | **AdGuard Home** | Local DNS resolution, telemetry sinkholing, ad-blocking |
+| | **Nginx Proxy Manager** | Reverse proxy edge routing, SSL/TLS certificate termination |
+| **Automation & Storage** | **Home Assistant** | Centralized smart home automation gateway |
+| | **OpenMediaVault** | Network-Attached Storage (NAS) via secure NFS/SMB shares |
+| **Media Workloads** | **Jellyfin & Navidrome** | Privacy-focused, rootless container media streaming |
 
 ---
 
