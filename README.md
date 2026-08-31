@@ -66,21 +66,22 @@ Traffic routing follows a strict separation of concerns to maximize internal sec
 
 ```mermaid
 %%{init: { 'theme': 'base', 'themeVariables': { 'fontSize': '12px', 'fontFamily': 'sans-serif' }}}%%
-graph LR
-    classDef router fill:#e74c3c,stroke:#c0392b,stroke-width:2px,color:#fff;
-    classDef pve fill:#f15a24,stroke:#a04000,stroke-width:2px,color:#fff;
-    classDef net fill:#34495e,stroke:#2c3e50,stroke-width:2px,color:#fff;
-    classDef svc fill:#3498db,stroke:#2980b9,stroke-width:2px,color:#fff;
+graph TD
+    classDef L1 fill:#ea580c,stroke:#c2410c,stroke-width:2px,color:#fff;
+    classDef L2 fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#fff;
+    classDef L3 fill:#334155,stroke:#1e293b,stroke-width:2px,color:#fff;
+    classDef L4 fill:#0ea5e9,stroke:#0284c7,stroke-width:2px,color:#fff;
+    classDef L5 fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
 
-    RTR["ROUTER (Gateway Traffic)"]:::router
-    FW["FIREWALL (Proxmox VE)"]:::pve
-    DNS["DNS SERVER (Adguard Home)"]:::net
-    RPX["REVERSE PROXY (Nginx Proxy Manager)"]:::net
-    SVC["INTERNAL SERVICES (Target Workloads)"]:::svc
+    RTR["LAYER 1: ROUTER<br>(Gateway Traffic)"]:::L1
+    FW["LAYER 2: FIREWALL<br>(Proxmox VE)"]:::L2
+    DNS["LAYER 3: DNS SERVER<br>(Adguard Home)"]:::L3
+    RPX["LAYER 4: REVERSE PROXY<br>(Nginx Proxy Manager)"]:::L4
+    SVC["LAYER 5: INTERNAL SERVICES<br>(Target Workloads)"]:::L5
 
-    RTR --> FW
-    FW --> DNS
-    DNS --> RPX
-    RPX --> SVC
+    RTR -->|"1. Routes WAN/LAN Traffic"| FW
+    FW -->|"2. Inspects & Filters Packets"| DNS
+    DNS -->|"3. Resolves Local Domains"| RPX
+    RPX -->|"4. Proxies SSL Requests"| SVC
 ```
 
