@@ -1,0 +1,105 @@
+---
+# roles/navidrome/tasks/main.yml
+
+- name: Create Navidrome local configuration directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ base_path }}/navidrome/data"
+
+- name: Mount Navidrome backup share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ item.src }}"
+    path: "{{ item.path }}"
+    fstype: nfs
+    opts: "{{ item.opts }}"
+    state: mounted
+  loop:
+    - { src: "{{ navidrome_nfs_share }}", path: "{{ backups_path }}/navidrome", opts: "rw,noatime,_netdev" }
+
+- name: Create Navidrome Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/navidrome.container"
+    content: |
+      [Container]
+      Image=docker.io/deluan/navidrome:latest
+      PublishPort=4533:4533
+      UserNS=keep-id
+      Environment=ND_MUSICFOLDER=/media
+      Environment=ND_DATAFOLDER=/data
+      Volume={{ media_path }}:/media:ro
+      Volume={{ base_path }}/navidrome/data:/data:Z
+      [Service]
+      Restart=on-failure
+      [Install]
+      WantedBy=default.target
+
+- name: Create Navidrome Restic password file inside backup dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ navidrome_pass }}"
+    dest: "{{ backups_path }}/navidrome/.restic_password"
+    mode: '0600'
+
+- name: Initialize Navidrome Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/navidrome init --password-file {{ backups_path }}/navidrome/.restic_password"
+  register: restic_init
+  failed_when: "(restic_init.rc != 0) and ('config file already exists' not in restic_init.stderr)"
+  changed_when: "'created restic repository' in restic_init.stdout"
+
+- name: Create Navidrome backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-navidrome.service"
+    content: |
+      [Unit]
+      Description=Safe Backup for Navidrome
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop navidrome
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/navidrome --password-file {{ backups_path }}/navidrome/.restic_password backup {{ navidrome_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/navidrome --password-file {{ backups_path }}/navidrome/.restic_password forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start navidrome
+
+- name: Create Navidrome backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-navidrome.timer"
+    content: |
+      [Unit]
+      Description=Timer for Navidrome
+
+      [Timer]
+      OnCalendar=*-*-* {{ navidrome_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Force systemd to load configs and start Navidrome units
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - navidrome
+    - restic-navidrome.timer
