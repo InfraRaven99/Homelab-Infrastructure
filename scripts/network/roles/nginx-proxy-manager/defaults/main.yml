@@ -1,0 +1,9 @@
+---
+# roles/nginx-proxy-manager/defaults/main.yml
+
+# --- Backups ---
+npm_time: "01:00:00"
+npm_target: "{{ npm_base_dir }}"
+npm_nfs_share: "{{ vault_npm_nfs_share }}"
+npm_pass: "{{ vault_npm_pass }}"
+

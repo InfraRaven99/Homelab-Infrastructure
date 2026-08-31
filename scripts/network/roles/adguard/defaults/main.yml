@@ -1,0 +1,8 @@
+---
+# roles/adguard/defaults/main.yml
+
+# --- Backups ---
+adguard_time: "01:30:00"
+adguard_target: "{{ dns_base_dir }}"
+adguard_nfs_share: "{{ vault_adguard_nfs_share }}"
+adguard_pass: "{{ vault_adguard_pass }}"

@@ -1,0 +1,105 @@
+---
+# roles/adguard/tasks/main.yml
+
+- name: Create AdGuard local directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ dns_base_dir }}/work"
+    - "{{ dns_base_dir }}/conf"
+
+- name: Mount AdGuard backup NFS share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ adguard_nfs_share }}"
+    path: "{{ backups_path }}/adguard"
+    fstype: nfs
+    opts: "rw,noatime,_netdev"
+    state: mounted
+
+- name: Create AdGuard Home Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/adguard.container"
+    content: |
+      [Container]
+      Image=docker.io/adguard/adguardhome:latest
+      PublishPort=53:53/tcp
+      PublishPort=53:53/udp
+      PublishPort=3000:3000/tcp
+      PublishPort=8080:80/tcp
+      UserNS=keep-id
+      Volume={{ dns_base_dir }}/work:/opt/adguardhome/work:Z
+      Volume={{ dns_base_dir }}/conf:/opt/adguardhome/conf:Z
+      [Service]
+      Restart=always
+      [Install]
+      WantedBy=default.target
+
+- name: Create AdGuard Restic password file inside backup dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ adguard_pass }}"
+    dest: "{{ backups_path }}/adguard/.restic_password"
+    mode: '0600'
+
+- name: Initialize AdGuard Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/adguard init --password-file {{ backups_path }}/adguard/.restic_password"
+  register: restic_init
+  failed_when: "(restic_init.rc != 0) and ('config file already exists' not in restic_init.stderr)"
+  changed_when: "'created restic repository' in restic_init.stdout"
+
+- name: Create AdGuard backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-adguard.service"
+    content: |
+      [Unit]
+      Description=Safe Backup for AdGuard Home
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop adguard
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/adguard --password-file {{ backups_path }}/adguard/.restic_password backup {{ adguard_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/adguard --password-file {{ backups_path }}/adguard/.restic_password forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start adguard
+
+- name: Create AdGuard backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-adguard.timer"
+    content: |
+      [Unit]
+      Description=Timer for AdGuard Backup
+
+      [Timer]
+      OnCalendar=*-*-* {{ adguard_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Start AdGuard Home and Backup Timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - adguard
+    - restic-adguard.timer

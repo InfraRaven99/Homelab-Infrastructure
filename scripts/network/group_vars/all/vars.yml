@@ -1,0 +1,18 @@
+---
+# group_vars/all/vars.yml
+
+# --- Global ---
+deploy_user: "{{ vault_deploy_user }}"
+base_path: "/home/{{ deploy_user }}"
+quadlet_dir: "{{ base_path }}/.config/containers/systemd"
+systemd_user_dir: "{{ base_path }}/.config/systemd/user"
+backups_path: "{{ base_path }}/backups"
+npm_base_dir: "{{ base_path }}/nginx-proxy-manager"
+dns_base_dir: "{{ base_path }}/adguard"
+
+# --- Networking ---
+nfs_server: "{{ vault_nfs_server }}"
+upstream_dns_ip: "{{ vault_upstream_dns_ip }}"
+
+
+

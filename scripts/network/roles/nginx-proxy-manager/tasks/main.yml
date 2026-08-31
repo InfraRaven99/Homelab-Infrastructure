@@ -1,0 +1,103 @@
+---
+# roles/nginx-proxy-manager/tasks/main.yml
+
+- name: Create Nginx Proxy Manager local directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ npm_base_dir }}/data"
+    - "{{ npm_base_dir }}/letsencrypt"
+
+- name: Mount Nginx Proxy Manager backup NFS share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ npm_nfs_share }}"
+    path: "{{ backups_path }}/nginx-proxy-manager"
+    fstype: nfs
+    opts: "rw,noatime,_netdev"
+    state: mounted
+
+- name: Create Nginx Proxy Manager Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/nginx-proxy-manager.container"
+    content: |
+      [Container]
+      Image=docker.io/jc21/nginx-proxy-manager:latest
+      PublishPort=80:80
+      PublishPort=443:443
+      PublishPort=81:81
+      Volume={{ npm_base_dir }}/data:/data:Z
+      Volume={{ npm_base_dir }}/letsencrypt:/etc/letsencrypt:Z
+      [Service]
+      Restart=always
+      [Install]
+      WantedBy=default.target
+
+- name: Create NPM Restic password file inside backup dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ npm_pass }}"
+    dest: "{{ backups_path }}/nginx-proxy-manager/.restic_password"
+    mode: '0600'
+
+- name: Initialize NPM Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/nginx-proxy-manager init --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password"
+  register: restic_init
+  failed_when: "(restic_init.rc != 0) and ('config file already exists' not in restic_init.stderr)"
+  changed_when: "'created restic repository' in restic_init.stdout"
+
+- name: Create NPM backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-npm.service"
+    content: |
+      [Unit]
+      Description=Safe Backup for Nginx Proxy Manager
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop nginx-proxy-manager
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password backup {{ npm_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start nginx-proxy-manager
+
+- name: Create NPM backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-npm.timer"
+    content: |
+      [Unit]
+      Description=Timer for NPM Backup
+
+      [Timer]
+      OnCalendar=*-*-* {{ npm_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Start Nginx Proxy Manager and Backup Timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop:
+    - nginx-proxy-manager
+    - restic-npm.timer

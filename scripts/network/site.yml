@@ -1,0 +1,10 @@
+---
+- name: Deploy Network Stack
+  hosts: localhost
+  connection: local
+  become: false
+
+  roles:
+    - common
+    - nginx-proxy-manager
+    - adguard
