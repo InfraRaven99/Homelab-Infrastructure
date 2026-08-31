@@ -8,6 +8,6 @@ quadlet_dir: "{{ base_path }}/.config/containers/systemd"
 systemd_user_dir: "{{ base_path }}/.config/systemd/user"
 media_path: "{{ base_path }}/media"
 backups_path: "{{ base_path }}/backups"
-nfs_server: "{{vault_nfs_server}}""
+nfs_server: "{{ vault_nfs_server }}""
 
 
