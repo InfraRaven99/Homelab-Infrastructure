@@ -34,11 +34,11 @@ My infrastructure is built from bare metal to application runtime using an autom
 ```mermaid
 %%{init: { 'theme': 'base', 'themeVariables': { 'fontSize': '12px', 'fontFamily': 'sans-serif' }}}%%
 graph TD
-    classDef l4 fill:#1abc9c,stroke:#117a65,stroke-width:2px,color:#fff;
-    classDef l3 fill:#3498db,stroke:#21618c,stroke-width:2px,color:#fff;
-    classDef l2 fill:#34495e,stroke:#212f3d,stroke-width:2px,color:#fff;
-    classDef l1 fill:#2c3e50,stroke:#1b2631,stroke-width:2px,color:#fff;
-    classDef l0 fill:#f15a24,stroke:#a04000,stroke-width:2px,color:#fff;
+    classDef l4 fill:#ccfbf1,stroke:#99f6e4,stroke-width:2px,color:#115e59;
+    classDef l3 fill:#99f6e4,stroke:#2dd4bf,stroke-width:2px,color:#115e59;
+    classDef l2 fill:#2dd4bf,stroke:#14b8a6,stroke-width:2px,color:#115e59;
+    classDef l1 fill:#14b8a6,stroke:#0d9488,stroke-width:2px,color:#fff;
+    classDef l0 fill:#0f766e,stroke:#115e59,stroke-width:2px,color:#fff;
 
     L4["LAYER 5: APPLICATION RUNTIME (Podman Containers)"]:::l4
     L3["LAYER 4: CONFIGURATION & AUTOMATION (Ansible Playbooks)"]:::l3
@@ -50,6 +50,7 @@ graph TD
     L1 -->|2. Injects IP & SSH Keys| L2
     L2 -->|3. Hosts Configurations| L3
     L3 -->|4. Deploys & Manages| L4
+
 ```
 
 ---
@@ -61,11 +62,11 @@ Traffic routing follows a strict separation of concerns to maximize internal sec
 ```mermaid
 %%{init: { 'theme': 'base', 'themeVariables': { 'fontSize': '12px', 'fontFamily': 'sans-serif' }}}%%
 graph TD
-    classDef L1 fill:#ea580c,stroke:#c2410c,stroke-width:2px,color:#fff;
-    classDef L2 fill:#1e293b,stroke:#0f172a,stroke-width:2px,color:#fff;
-    classDef L3 fill:#334155,stroke:#1e293b,stroke-width:2px,color:#fff;
-    classDef L4 fill:#0ea5e9,stroke:#0284c7,stroke-width:2px,color:#fff;
-    classDef L5 fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef L1 fill:#ccfbf1,stroke:#99f6e4,stroke-width:2px,color:#115e59;
+    classDef L2 fill:#99f6e4,stroke:#2dd4bf,stroke-width:2px,color:#115e59;
+    classDef L3 fill:#2dd4bf,stroke:#14b8a6,stroke-width:2px,color:#115e59;
+    classDef L4 fill:#14b8a6,stroke:#0d9488,stroke-width:2px,color:#fff;
+    classDef L5 fill:#0f766e,stroke:#115e59,stroke-width:2px,color:#fff;
 
     RTR["LAYER 1: ROUTER<br>(Gateway Traffic)"]:::L1
     FW["LAYER 2: FIREWALL<br>(Proxmox VE)"]:::L2
@@ -77,5 +78,6 @@ graph TD
     FW -->|"2. Inspects & Filters Packets"| DNS
     DNS -->|"3. Resolves Local Domains"| RPX
     RPX -->|"4. Proxies SSL Requests"| SVC
+
 ```
 
