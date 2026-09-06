@@ -12,7 +12,7 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 | **Initialization** | **Cloud-Init** | Automated OS bootstrapping, dynamic SSH key injection, instant cloud-image scaling |
 | **Operating System** | **Debian Cloud Images** | Stable, minimal footprint, automated security update patching |
 | **Container Runtime** | **Podman Quadlets** | Rootless container deployments, native systemd service process lifecycle integration |
----
+
 
 ## Hosted Services
 
@@ -24,8 +24,6 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 | **Automation & Storage** | **Home Assistant** | Centralized smart home automation gateway |
 | | **OpenMediaVault** | Network-Attached Storage (NAS) via secure NFS/SMB shares |
 | **Media Workloads** | **Jellyfin & Navidrome** | Privacy-focused media streaming |
-
----
 
 ## Deployment Pipeline
 
@@ -52,8 +50,6 @@ graph TD
     L3 -->|4. Deploys & Manages| L4
 
 ```
-
----
 
 ## Networking and Traffic Flow
 
