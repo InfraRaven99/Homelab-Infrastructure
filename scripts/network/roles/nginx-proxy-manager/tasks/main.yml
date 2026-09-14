@@ -28,6 +28,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ quadlet_dir }}/nginx-proxy-manager.container"
+    mode: '0644' 
     content: |
       [Container]
       Image=docker.io/jc21/nginx-proxy-manager:latest
@@ -36,32 +37,35 @@
       PublishPort=81:81
       Volume={{ npm_base_dir }}/data:/data:Z
       Volume={{ npm_base_dir }}/letsencrypt:/etc/letsencrypt:Z
+
       [Service]
       Restart=always
+
       [Install]
       WantedBy=default.target
 
-- name: Create NPM Restic password file inside backup dir
+- name: Create NPM Restic password file locally in backups parent dir
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     content: "{{ npm_pass }}"
-    dest: "{{ backups_path }}/nginx-proxy-manager/.restic_password"
+    dest: "{{ backups_path }}/.restic_password_npm"
     mode: '0600'
 
 - name: Initialize NPM Restic repository
   become: true
   become_user: "{{ deploy_user }}"
-  ansible.builtin.command: "restic -r {{ backups_path }}/nginx-proxy-manager init --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password"
-  register: restic_init
-  failed_when: "(restic_init.rc != 0) and ('config file already exists' not in restic_init.stderr)"
-  changed_when: "'created restic repository' in restic_init.stdout"
+  ansible.builtin.command: "restic -r {{ backups_path }}/nginx-proxy-manager init --password-file {{ backups_path }}/.restic_password_npm"
+  register: nginx_proxy_manager_restic_init 
+  failed_when: "(nginx_proxy_manager_restic_init.rc != 0) and ('config file already exists' not in nginx_proxy_manager_restic_init.stderr)"
+  changed_when: "'created restic repository' in nginx_proxy_manager_restic_init.stdout"
 
 - name: Create NPM backup systemd service
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-npm.service"
+    mode: '0644' 
     content: |
       [Unit]
       Description=Safe Backup for Nginx Proxy Manager
@@ -69,8 +73,8 @@
       [Service]
       Type=oneshot
       ExecStartPre=/usr/bin/systemctl --user stop nginx-proxy-manager
-      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password backup {{ npm_target }}
-      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/nginx-proxy-manager/.restic_password forget --keep-daily 30 --prune
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/.restic_password_npm backup {{ npm_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/nginx-proxy-manager --password-file {{ backups_path }}/.restic_password_npm forget --keep-daily 30 --prune
       ExecStartPost=/usr/bin/systemctl --user start nginx-proxy-manager
 
 - name: Create NPM backup systemd timer
@@ -78,6 +82,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-npm.timer"
+    mode: '0644'
     content: |
       [Unit]
       Description=Timer for NPM Backup

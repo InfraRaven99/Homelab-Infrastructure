@@ -6,7 +6,7 @@
   ansible.builtin.apt:
     name: [podman, uidmap, acl, nfs-common, restic]
     state: present
-    update_cache: yes
+    update_cache: true 
 
 - name: Completely stop and disable systemd-resolved to free port 53
   become: true
@@ -17,7 +17,7 @@
 
 - name: Point system resolver directly to DNS server
   become: true
-  ansible.builtin.copy:  
+  ansible.builtin.copy:
     dest: /etc/resolv.conf
     content: "nameserver {{ upstream_dns_ip }}\n"
     mode: '0644'
@@ -27,7 +27,7 @@
   ansible.posix.sysctl:
     name: net.ipv4.ip_unprivileged_port_start
     value: "0"
-    sysctl_file: /etc/sysctl.d/99-rootless-ports.conf 
+    sysctl_file: /etc/sysctl.d/99-rootless-ports.conf
     sysctl_set: true
     state: present
     reload: true
@@ -37,4 +37,4 @@
   ansible.builtin.command: "loginctl enable-linger {{ deploy_user }}"
   args:
     creates: "/var/lib/systemd/linger/{{ deploy_user }}"
-
+  changed_when: false 

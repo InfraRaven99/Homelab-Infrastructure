@@ -1,6 +1,4 @@
 ---
-# roles/jellyfin/tasks/main.yml
-
 - name: Create Jellyfin local configuration directories
   become: true
   become_user: "{{ deploy_user }}"
@@ -31,6 +29,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ quadlet_dir }}/jellyfin.container"
+    mode: '0644'
     content: |
       [Container]
       Image=docker.io/jellyfin/jellyfin:latest
@@ -39,25 +38,27 @@
       Volume={{ media_path }}:/media:ro
       Volume={{ base_path }}/jellyfin/config:/config:Z
       Volume={{ base_path }}/jellyfin/cache:/cache:Z
+
       [Service]
       Restart=on-failure
       SuccessExitStatus=0 143
+
       [Install]
       WantedBy=default.target
 
-- name: Create Jellyfin Restic password file inside backup dir
+- name: Create Jellyfin Restic password file locally in backups parent dir
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     content: "{{ jellyfin_pass }}"
-    dest: "{{ backups_path }}/jellyfin/.restic_password"
+    dest: "{{ backups_path }}/.restic_password_jellyfin"
     mode: '0600'
 
 - name: Initialize Jellyfin Restic repository
   become: true
   become_user: "{{ deploy_user }}"
-  ansible.builtin.command: "restic -r {{ backups_path }}/jellyfin init --password-file {{ backups_path }}/jellyfin/.restic_password"
-  register: restic_init
+  ansible.builtin.command: "restic -r {{ backups_path }}/jellyfin init --password-file {{ backups_path }}/.restic_password_jellyfin"
+  register: jellyfin_restic_init
   failed_when: "(restic_init.rc != 0) and ('config file already exists' not in restic_init.stderr)"
   changed_when: "'created restic repository' in restic_init.stdout"
 
@@ -66,6 +67,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-jellyfin.service"
+    mode: '0644'
     content: |
       [Unit]
       Description=Safe Backup for Jellyfin
@@ -73,8 +75,8 @@
       [Service]
       Type=oneshot
       ExecStartPre=/usr/bin/systemctl --user stop jellyfin
-      ExecStart=/usr/bin/restic -r {{ backups_path }}/jellyfin --password-file {{ backups_path }}/jellyfin/.restic_password backup {{ jellyfin_target }}
-      ExecStart=/usr/bin/restic -r {{ backups_path }}/jellyfin --password-file {{ backups_path }}/jellyfin/.restic_password forget --keep-daily 30 --prune
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/jellyfin --password-file {{ backups_path }}/.restic_password_jellyfin backup {{ jellyfin_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/jellyfin --password-file {{ backups_path }}/.restic_password_jellyfin forget --keep-daily 30 --prune
       ExecStartPost=/usr/bin/systemctl --user start jellyfin
 
 - name: Create Jellyfin backup systemd timer
@@ -82,6 +84,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-jellyfin.timer"
+    mode: '0644'
     content: |
       [Unit]
       Description=Timer for Jellyfin
@@ -97,11 +100,11 @@
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.systemd:
-    daemon_reload: yes
+    daemon_reload: true
     scope: user
     name: "{{ item }}"
     state: started
-    enabled: yes
+    enabled: true
   loop:
     - jellyfin
     - restic-jellyfin.timer

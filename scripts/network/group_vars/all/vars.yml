@@ -13,6 +13,3 @@ dns_base_dir: "{{ base_path }}/adguard"
 # --- Networking ---
 nfs_server: "{{ vault_nfs_server }}"
 upstream_dns_ip: "{{ vault_upstream_dns_ip }}"
-
-
-
