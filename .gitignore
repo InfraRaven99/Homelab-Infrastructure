@@ -8,3 +8,4 @@ vault.yml
 .DS_Store
 .vscode/
 .idea/
+**/vault.yml
