@@ -93,11 +93,11 @@
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.systemd:
-    daemon_reload: yes
+    daemon_reload: true
     scope: user
     name: "{{ item }}"
     state: started
-    enabled: yes
+    enabled: true
   loop:
     - nginx-proxy-manager
     - restic-npm.timer
