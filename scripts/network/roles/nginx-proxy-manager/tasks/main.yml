@@ -7,7 +7,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ quadlet_dir }}"
     - "{{ systemd_user_dir }}"
@@ -28,7 +28,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ quadlet_dir }}/nginx-proxy-manager.container"
-    mode: '0644' 
+    mode: "0644"
     content: |
       [Container]
       Image=docker.io/jc21/nginx-proxy-manager:latest
@@ -50,13 +50,13 @@
   ansible.builtin.copy:
     content: "{{ npm_pass }}"
     dest: "{{ backups_path }}/.restic_password_npm"
-    mode: '0600'
+    mode: "0600"
 
 - name: Initialize NPM Restic repository
   become: true
   become_user: "{{ deploy_user }}"
   ansible.builtin.command: "restic -r {{ backups_path }}/nginx-proxy-manager init --password-file {{ backups_path }}/.restic_password_npm"
-  register: nginx_proxy_manager_restic_init 
+  register: nginx_proxy_manager_restic_init
   failed_when: "(nginx_proxy_manager_restic_init.rc != 0) and ('config file already exists' not in nginx_proxy_manager_restic_init.stderr)"
   changed_when: "'created restic repository' in nginx_proxy_manager_restic_init.stdout"
 
@@ -65,7 +65,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-npm.service"
-    mode: '0644' 
+    mode: "0644"
     content: |
       [Unit]
       Description=Safe Backup for Nginx Proxy Manager
@@ -82,7 +82,7 @@
   become_user: "{{ deploy_user }}"
   ansible.builtin.copy:
     dest: "{{ systemd_user_dir }}/restic-npm.timer"
-    mode: '0644'
+    mode: "0644"
     content: |
       [Unit]
       Description=Timer for NPM Backup

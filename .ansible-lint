@@ -1,0 +1,4 @@
+---
+# .ansible-lint configuration profiles
+skip_list:
+  - role-name  # Permits hyphens in the nginx-proxy-manager folder layout
