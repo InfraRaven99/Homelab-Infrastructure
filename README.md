@@ -13,17 +13,16 @@ I have designed and implemented a fully automated, layered deployment pipeline t
 | **Operating System** | **Debian Cloud Images** | Stable, minimal footprint, automated security update patching |
 | **Container Runtime** | **Podman Quadlets** | Rootless container deployments, native systemd service process lifecycle integration |
 
-
 ## Hosted Services
-
 
 | Category | Service | Function |
 | :--- | :--- | :--- |
 | **Networking & Security** | **AdGuard Home** | Local DNS resolution, telemetry sinkholing, ad-blocking |
 | | **Nginx Proxy Manager** | Reverse proxy edge routing, SSL/TLS certificate termination |
-| **Automation & Storage** | **Home Assistant** | Centralized smart home automation gateway |
-| | **OpenMediaVault** | Network-Attached Storage (NAS) via secure NFS/SMB shares |
 | **Media Workloads** | **Jellyfin & Navidrome** | Privacy-focused media streaming |
+| **Self-Hosted Productivity** | **Firefly III** | Personal finance management and double-entry bookkeeping |
+| | **Radicale** | CalDAV and CardDAV server for calendar and contact synchronization |
+| | **Gitea** | Lightweight self-hosted Git service for code and infrastructure-as-code repository hosting |
 
 ## Deployment Pipeline
 
