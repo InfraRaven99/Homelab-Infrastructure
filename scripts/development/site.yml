@@ -1,0 +1,10 @@
+---
+# site.yml
+- name: Deploy Development Infrastructure
+  hosts: localhost
+  connection: local
+  become: false
+
+  roles:
+    - common
+    - gitea

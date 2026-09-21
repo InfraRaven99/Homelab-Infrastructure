@@ -1,0 +1,10 @@
+---
+# scripts/development/group_vars/all/vars.yml
+
+# Development Infrastructure Global Configurations
+deploy_user: "{{ vault_deploy_user }}"
+base_path: "/home/{{ deploy_user }}"
+quadlet_dir: "{{ base_path }}/.config/containers/systemd"
+systemd_user_dir: "{{ base_path }}/.config/systemd/user"
+backups_path: "{{ base_path }}/backups"
+nfs_server: "{{ vault_nfs_server }}"

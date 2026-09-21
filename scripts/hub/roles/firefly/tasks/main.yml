@@ -1,0 +1,187 @@
+---
+# roles/firefly/tasks/main.yml
+
+- name: Create Firefly local configuration directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ firefly_base_dir }}/db"
+    - "{{ firefly_base_dir }}/upload"
+    - "{{ backups_path }}"
+
+- name: Mount Firefly backup NFS storage share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ firefly_nfs_share }}"
+    path: "{{ backups_path }}/firefly"
+    fstype: nfs
+    opts: "rw,noatime,_netdev"
+    state: mounted
+
+- name: Create Podman internal network definition for Firefly
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/firefly_net.network"
+    mode: "0644"
+    content: |
+      [Network]
+      NetworkName=firefly_net
+      Internal=false
+
+- name: Create Firefly Database Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/firefly-db.container"
+    mode: "0644"
+    content: |
+      [Container]
+      Network=firefly_net
+      Image=docker.io/library/mariadb:10.11
+
+      Environment=MYSQL_RANDOM_ROOT_PASSWORD=yes
+      Environment=MYSQL_DATABASE=firefly_db
+      Environment=MYSQL_USER={{ vault_firefly_db_user }}
+      Environment=MYSQL_PASSWORD={{ vault_firefly_db_password }}
+
+      Volume={{ firefly_base_dir }}/db:/var/lib/mysql:Z
+
+      [Service]
+      Restart=always
+
+      [Install]
+      WantedBy=default.target
+
+- name: Create Firefly Core Application Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/firefly.container"
+    mode: "0644"
+    content: |
+      [Container]
+      Image=docker.io/fireflyiii/core:{{ firefly_version }}
+      PublishPort=8080:8080
+      Network=firefly_net
+
+      Environment=APP_KEY={{ firefly_app_key }}
+      Environment=TZ=America/Chicago
+      Environment=DB_CONNECTION=mysql
+      Environment=DB_HOST=systemd-firefly-db
+      Environment=DB_PORT=3306
+      Environment=DB_DATABASE=firefly_db
+      Environment=DB_USERNAME={{ vault_firefly_db_user }}
+      Environment=DB_PASSWORD={{ vault_firefly_db_password }}
+      Environment=TRUSTED_PROXIES=*
+      Environment=APP_URL={{ vault_firefly_scheme }}://{{ vault_firefly_core_domain }}
+      Environment=COOKIE_SECURE=true
+
+      UserNS=keep-id
+      Volume={{ firefly_base_dir }}/upload:/var/www/html/storage/upload:Z
+      Volume=/etc/localtime:/etc/localtime:ro
+
+      [Service]
+      Restart=always
+
+      [Install]
+      WantedBy=default.target
+
+- name: Create Firefly Data Importer Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/firefly-importer.container"
+    mode: "0644"
+    content: |
+      [Container]
+      Image=docker.io/fireflyiii/data-importer:latest
+      PublishPort=8081:8080
+      Network=firefly_net
+
+      Environment=FIREFLY_III_URL={{ vault_firefly_scheme }}://{{ vault_firefly_core_domain }}
+      Environment=VANITY_URL={{ vault_firefly_scheme }}://{{ vault_firefly_importer_domain }}
+      Environment=FIREFLY_III_ACCESS_TOKEN={{ vault_firefly_importer_token }}
+      Environment=AUTO_IMPORT_SECRET={{ vault_firefly_import_secret }}
+      Environment=TZ=America/Chicago
+
+      [Service]
+      Restart=always
+
+      [Install]
+      WantedBy=default.target
+
+- name: Create Firefly Restic password file locally in backups parent dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ firefly_pass }}"
+    dest: "{{ backups_path }}/.restic_password_firefly"
+    mode: "0600"
+
+- name: Initialize Firefly Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/firefly init --password-file {{ backups_path }}/.restic_password_firefly"
+  register: firefly_restic_init
+  failed_when: "(firefly_restic_init.rc != 0) and ('config file already exists' not in firefly_restic_init.stderr)"
+  changed_when: "'created restic repository' in firefly_restic_init.stdout"
+
+- name: Create Firefly backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-firefly.service"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Safe Backup for Firefly III Ledger Server
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop firefly.service firefly-db.service
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/firefly \
+        --password-file {{ backups_path }}/.restic_password_firefly \
+        backup {{ firefly_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/firefly \
+        --password-file {{ backups_path }}/.restic_password_firefly \
+        forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start firefly-db.service firefly.service
+
+- name: Create Firefly backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-firefly.timer"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Timer for Firefly III Server Backup
+
+      [Timer]
+      OnCalendar=*-*-* {{ firefly_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Force systemd to load configs and start Firefly units
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - firefly-db
+    - firefly
+    - firefly-importer
+    - restic-firefly.timer

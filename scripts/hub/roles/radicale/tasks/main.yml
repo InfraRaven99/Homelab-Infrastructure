@@ -1,0 +1,132 @@
+---
+# roles/radicale/tasks/main.yml
+
+- name: Create Radicale local configuration directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ radicale_base_dir }}/data"
+    - "{{ radicale_base_dir }}/config"
+    - "{{ backups_path }}"
+
+- name: Mount Radicale backup NFS storage share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ radicale_nfs_share }}"
+    path: "{{ backups_path }}/radicale"
+    fstype: nfs
+    opts: "rw,noatime,_netdev"
+    state: mounted
+
+- name: Create Radicale configuration file
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ radicale_base_dir }}/config/config"
+    mode: "0644"
+    content: |
+      [server]
+      hosts = 0.0.0.0:5232
+
+      [storage]
+      type = multifilesystem
+      filesystem_folder = /data
+
+      [auth]
+      type = htpasswd
+      htpasswd_filename = /config/users
+      htpasswd_encryption = bcrypt
+
+- name: Create Radicale Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/radicale.container"
+    mode: "0644"
+    content: |
+      [Container]
+      Image=docker.io/tomsquest/docker-radicale:{{ radicale_version | default('latest') }}
+      PublishPort=5232:5232
+      UserNS=keep-id:uid=1000,gid=1000
+      Volume={{ radicale_base_dir }}/data:/data:Z
+      Volume={{ radicale_base_dir }}/config:/config:Z
+      Volume=/etc/localtime:/etc/localtime:ro
+
+      [Service]
+      Restart=always
+
+      [Install]
+      WantedBy=default.target
+
+- name: Create Radicale Restic password file locally in backups parent dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ radicale_pass }}"
+    dest: "{{ backups_path }}/.restic_password_radicale"
+    mode: "0600"
+
+- name: Initialize Radicale Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/radicale init --password-file {{ backups_path }}/.restic_password_radicale"
+  register: radicale_restic_init
+  failed_when: "(radicale_restic_init.rc != 0) and ('config file already exists' not in radicale_restic_init.stderr)"
+  changed_when: "'created restic repository' in radicale_restic_init.stdout"
+
+- name: Create Radicale backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-radicale.service"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Safe Backup for Radicale CalDAV/CardDAV Server
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop radicale
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/radicale \
+        --password-file {{ backups_path }}/.restic_password_radicale \
+        backup {{ radicale_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/radicale \
+        --password-file {{ backups_path }}/.restic_password_radicale \
+        forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start radicale
+
+- name: Create Radicale backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-radicale.timer"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Timer for Radicale Server Backup
+
+      [Timer]
+      OnCalendar=*-*-* {{ radicale_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Force systemd to load configs and start Radicale units
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - radicale
+    - restic-radicale.timer

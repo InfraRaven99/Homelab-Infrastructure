@@ -1,0 +1,15 @@
+---
+# roles/firefly/defaults/main.yml
+
+# Application Core and Engine Versions
+firefly_version: "latest"
+firefly_base_dir: "{{ base_path }}/firefly"
+
+# App Key Encryption Configuration
+firefly_app_key: "{{ vault_firefly_app_key }}"
+
+# Automated Backups Profile Configuration
+firefly_time: "03:15:00"
+firefly_target: "{{ firefly_base_dir }}"
+firefly_pass: "{{ vault_firefly_pass }}"
+firefly_nfs_share: "{{ vault_firefly_nfs_share }}"

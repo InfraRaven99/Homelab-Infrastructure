@@ -1,0 +1,11 @@
+---
+# roles/radicale/defaults/main.yml
+
+radicale_version: "3.8.0.0"
+radicale_base_dir: "{{ base_path }}/radicale"
+
+# Backups Configuration
+radicale_time: "03:00:00"
+radicale_target: "{{ radicale_base_dir }}"
+radicale_pass: "{{ vault_radicale_pass }}"
+radicale_nfs_share: "{{ vault_radicale_nfs_share }}"

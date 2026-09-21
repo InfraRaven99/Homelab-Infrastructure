@@ -1,0 +1,11 @@
+---
+# site.yml
+- name: Deploy Hub Infrastructure
+  hosts: localhost
+  connection: local
+  become: false
+
+  roles:
+    - common
+    - radicale
+    - firefly

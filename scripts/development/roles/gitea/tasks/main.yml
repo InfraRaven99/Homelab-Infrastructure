@@ -1,0 +1,114 @@
+---
+# roles/gitea/tasks/main.yml
+
+- name: Create Gitea local configuration directories
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ quadlet_dir }}"
+    - "{{ systemd_user_dir }}"
+    - "{{ gitea_base_dir }}/data"
+    - "{{ gitea_base_dir }}/config"
+    - "{{ backups_path }}"
+
+- name: Mount Gitea backup NFS storage share
+  become: true
+  ansible.posix.mount:
+    src: "{{ nfs_server }}:{{ gitea_nfs_share }}"
+    path: "{{ backups_path }}/gitea"
+    fstype: nfs
+    opts: "rw,noatime,_netdev"
+    state: mounted
+
+- name: Create Gitea Quadlet definition
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ quadlet_dir }}/gitea.container"
+    mode: "0644"
+    content: |
+      [Container]
+      Image=docker.io/gitea/gitea:{{ gitea_version }}-rootless
+      PublishPort=3000:3000
+      PublishPort=2222:2222
+      UserNS=keep-id:uid=1000,gid=1000
+      Volume={{ gitea_base_dir }}/data:/var/lib/gitea:Z
+      Volume={{ gitea_base_dir }}/config:/etc/gitea:Z
+      Volume=/etc/localtime:/etc/localtime:ro
+
+      [Service]
+      Restart=always
+
+      [Install]
+      WantedBy=default.target
+
+- name: Create Gitea Restic password file locally in backups parent dir
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    content: "{{ gitea_pass }}"
+    dest: "{{ backups_path }}/.restic_password_gitea"
+    mode: "0600"
+
+- name: Initialize Gitea Restic repository
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.command: "restic -r {{ backups_path }}/gitea init --password-file {{ backups_path }}/.restic_password_gitea"
+  register: gitea_restic_init
+  failed_when: "(gitea_restic_init.rc != 0) and ('config file already exists' not in gitea_restic_init.stderr)"
+  changed_when: "'created restic repository' in gitea_restic_init.stdout"
+
+- name: Create Gitea backup systemd service
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-gitea.service"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Safe Backup for Gitea Core Server
+
+      [Service]
+      Type=oneshot
+      ExecStartPre=/usr/bin/systemctl --user stop gitea
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/gitea \
+        --password-file {{ backups_path }}/.restic_password_gitea \
+        backup {{ gitea_target }}
+      ExecStart=/usr/bin/restic -r {{ backups_path }}/gitea \
+        --password-file {{ backups_path }}/.restic_password_gitea \
+        forget --keep-daily 30 --prune
+      ExecStartPost=/usr/bin/systemctl --user start gitea
+
+- name: Create Gitea backup systemd timer
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.copy:
+    dest: "{{ systemd_user_dir }}/restic-gitea.timer"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Timer for Gitea Server Backup
+
+      [Timer]
+      OnCalendar=*-*-* {{ gitea_time }}
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Force systemd to load configs and start Gitea units
+  become: true
+  become_user: "{{ deploy_user }}"
+  ansible.builtin.systemd:
+    daemon_reload: true
+    scope: user
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - gitea
+    - restic-gitea.timer

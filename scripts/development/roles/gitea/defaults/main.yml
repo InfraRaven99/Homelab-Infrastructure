@@ -1,0 +1,11 @@
+---
+# roles/gitea/defaults/main.yml
+
+gitea_version: "1.27.3"
+gitea_base_dir: "{{ base_path }}/gitea"
+
+# Backups Configuration
+gitea_time: "03:00:00"
+gitea_target: "{{ gitea_base_dir }}/data"
+gitea_pass: "{{ vault_gitea_pass }}"
+gitea_nfs_share: "{{ vault_gitea_nfs_share }}"
